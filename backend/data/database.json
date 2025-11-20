@@ -1,0 +1,29 @@
+{
+  "transactions": [
+    {
+      "id": 1,
+      "sales_rep_id": 12,
+      "sale_amount": 15,
+      "product_details": "Daniel's Soul",
+      "transaction_date": "2025-11-17T13:16:00.201Z",
+      "status": "APPROVED"
+    }
+  ],
+  "commissions": [
+    {
+      "id": 1,
+      "transaction_id": 1,
+      "commission_amount": 1.5,
+      "performance_bonus": 0,
+      "status": "PAID"
+    }
+  ],
+  "commissionRules": [],
+  "salesReps": [],
+  "nextIds": {
+    "transaction": 1,
+    "commission": 1,
+    "rule": 1,
+    "salesRep": 1
+  }
+}
