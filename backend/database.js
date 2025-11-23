@@ -16,7 +16,9 @@ class Database {
         }
     }
 
-    // Transaction methods
+    // ==========================================
+    // TRANSACTION METHODS
+    // ==========================================
     async createTransaction(transactionData) {
         const connection = await this.dbConnection.getConnection();
         
@@ -34,13 +36,10 @@ class Database {
 
         try {
             const [result] = await connection.execute(query, values);
-            
-            // Return the created transaction
             const [newTransaction] = await connection.execute(
                 'SELECT * FROM transactions WHERE id = ?',
                 [result.insertId]
             );
-            
             return newTransaction[0];
         } catch (error) {
             console.error('Error creating transaction:', error);
@@ -60,16 +59,12 @@ class Database {
         try {
             const [result] = await connection.execute(query, [status, id]);
             
-            if (result.affectedRows === 0) {
-                return null;
-            }
+            if (result.affectedRows === 0) return null;
             
-            // Return the updated transaction
             const [transaction] = await connection.execute(
                 'SELECT * FROM transactions WHERE id = ?',
                 [id]
             );
-            
             return transaction[0];
         } catch (error) {
             console.error('Error updating transaction status:', error);
@@ -79,7 +74,6 @@ class Database {
 
     async getAllTransactions() {
         const connection = await this.dbConnection.getConnection();
-        
         try {
             const [rows] = await connection.execute('SELECT * FROM transactions ORDER BY transaction_date DESC');
             return rows;
@@ -91,7 +85,6 @@ class Database {
 
     async getTransactionById(id) {
         const connection = await this.dbConnection.getConnection();
-        
         try {
             const [rows] = await connection.execute(
                 'SELECT * FROM transactions WHERE id = ?',
@@ -106,7 +99,6 @@ class Database {
 
     async getTransactionsByRep(salesRepId) {
         const connection = await this.dbConnection.getConnection();
-        
         try {
             const [rows] = await connection.execute(
                 'SELECT * FROM transactions WHERE sales_rep_id = ? ORDER BY transaction_date DESC',
@@ -119,8 +111,11 @@ class Database {
         }
     }
 
-    // Commission methods
+    // ==========================================
+    // COMMISSION METHODS
+    // ==========================================
     async createCommission(commissionData) {
+        // 1. Get connection from pool
         const connection = await this.dbConnection.getConnection();
         
         const query = `
@@ -137,8 +132,6 @@ class Database {
 
         try {
             const [result] = await connection.execute(query, values);
-            
-            // Return the created commission
             const [newCommission] = await connection.execute(
                 'SELECT * FROM commissions WHERE id = ?',
                 [result.insertId]
@@ -148,47 +141,40 @@ class Database {
         } catch (error) {
             console.error('Error creating commission:', error);
             throw error;
+        } finally { 
+            connection.release();
         }
     }
 
     async updateCommission(id, updates) {
         const connection = await this.dbConnection.getConnection();
         
-        // Build dynamic update query
         const fields = [];
         const values = [];
         
         for (const [key, value] of Object.entries(updates)) {
-            fields.push(`${key} = ?`);
-            values.push(value);
+            // FIX: Only add the field if the value is NOT undefined
+            if (value !== undefined) {
+                fields.push(`${key} = ?`);
+                values.push(value);
+            }
         }
         
-        if (fields.length === 0) {
-            return null;
-        }
+        if (fields.length === 0) return null;
         
         fields.push('updated_at = CURRENT_TIMESTAMP');
         values.push(id);
         
-        const query = `
-            UPDATE commissions 
-            SET ${fields.join(', ')}
-            WHERE id = ?
-        `;
+        const query = `UPDATE commissions SET ${fields.join(', ')} WHERE id = ?`;
         
         try {
             const [result] = await connection.execute(query, values);
+            if (result.affectedRows === 0) return null;
             
-            if (result.affectedRows === 0) {
-                return null;
-            }
-            
-            // Return the updated commission
             const [commission] = await connection.execute(
                 'SELECT * FROM commissions WHERE id = ?',
                 [id]
             );
-            
             return commission[0];
         } catch (error) {
             console.error('Error updating commission:', error);
@@ -198,7 +184,6 @@ class Database {
 
     async getCommissionById(id) {
         const connection = await this.dbConnection.getConnection();
-        
         try {
             const [rows] = await connection.execute(
                 'SELECT * FROM commissions WHERE id = ?',
@@ -228,12 +213,13 @@ class Database {
         } catch (error) {
             console.error('Error getting commissions by rep:', error);
             throw error;
+        } finally {
+            connection.release();
         }
     }
 
     async getAllCommissions() {
         const connection = await this.dbConnection.getConnection();
-        
         try {
             const [rows] = await connection.execute(`
                 SELECT c.*, t.sales_rep_id, t.sale_amount, t.transaction_date
@@ -248,7 +234,9 @@ class Database {
         }
     }
 
-    // Commission Rules methods
+    // ==========================================
+    // COMMISSION RULES METHODS
+    // ==========================================
     async createRule(ruleData) {
         const connection = await this.dbConnection.getConnection();
         
@@ -256,17 +244,21 @@ class Database {
             INSERT INTO commission_rules (rule_name, base_rate, is_active)
             VALUES (?, ?, ?)
         `;
-        
+
+        let activeValue = 1; 
+        if (ruleData.is_active !== undefined) {
+            activeValue = ruleData.is_active ? 1 : 0;
+        }
+
         const values = [
             ruleData.rule_name,
             ruleData.base_rate,
-            ruleData.is_active !== undefined ? ruleData.is_active : true
+            activeValue
         ];
 
         try {
             const [result] = await connection.execute(query, values);
             
-            // Return the created rule
             const [newRule] = await connection.execute(
                 'SELECT * FROM commission_rules WHERE id = ?',
                 [result.insertId]
@@ -282,7 +274,6 @@ class Database {
     async updateRule(id, updates) {
         const connection = await this.dbConnection.getConnection();
         
-        // Build dynamic update query
         const fields = [];
         const values = [];
         
@@ -291,32 +282,21 @@ class Database {
             values.push(value);
         }
         
-        if (fields.length === 0) {
-            return null;
-        }
+        if (fields.length === 0) return null;
         
         fields.push('updated_at = CURRENT_TIMESTAMP');
         values.push(id);
         
-        const query = `
-            UPDATE commission_rules 
-            SET ${fields.join(', ')}
-            WHERE id = ?
-        `;
+        const query = `UPDATE commission_rules SET ${fields.join(', ')} WHERE id = ?`;
         
         try {
             const [result] = await connection.execute(query, values);
+            if (result.affectedRows === 0) return null;
             
-            if (result.affectedRows === 0) {
-                return null;
-            }
-            
-            // Return the updated rule
             const [rule] = await connection.execute(
                 'SELECT * FROM commission_rules WHERE id = ?',
                 [id]
             );
-            
             return rule[0];
         } catch (error) {
             console.error('Error updating rule:', error);
@@ -326,7 +306,6 @@ class Database {
 
     async getAllRules() {
         const connection = await this.dbConnection.getConnection();
-        
         try {
             const [rows] = await connection.execute('SELECT * FROM commission_rules ORDER BY created_at DESC');
             return rows;
@@ -338,7 +317,6 @@ class Database {
 
     async getRuleById(id) {
         const connection = await this.dbConnection.getConnection();
-        
         try {
             const [rows] = await connection.execute(
                 'SELECT * FROM commission_rules WHERE id = ?',
@@ -351,7 +329,21 @@ class Database {
         }
     }
 
-    // Sales Rep methods
+    async deleteRule(id) {
+        const connection = await this.dbConnection.getConnection();
+        try {
+            const [result] = await connection.execute('DELETE FROM commission_rules WHERE id = ?', [id]);
+            return result.affectedRows > 0;
+        } catch (error) {
+            console.error('Error deleting rule:', error);
+            throw error;
+        }
+    }
+
+    // ==========================================
+    // SALES REP METHODS (FIXED & EXPANDED)
+    // ==========================================
+    
     async createSalesRep(salesRepData) {
         const connection = await this.dbConnection.getConnection();
         
@@ -410,22 +402,78 @@ class Database {
         }
     }
 
-    // Delete commission rule
-    async deleteRule(id) {
+    // ADDED: Needed for validation in controller
+    async getSalesRepByEmail(email) {
         const connection = await this.dbConnection.getConnection();
         
-        const query = 'DELETE FROM commission_rules WHERE id = ?';
-        
         try {
-            const [result] = await connection.execute(query, [id]);
-            return result.affectedRows > 0;
+            const [rows] = await connection.execute(
+                'SELECT * FROM sales_reps WHERE email = ?',
+                [email]
+            );
+            return rows[0] || null;
         } catch (error) {
-            console.error('Error deleting rule:', error);
+            console.error('Error getting sales rep by Email:', error);
             throw error;
         }
     }
 
-    // Close database connection
+    // ADDED: Needed for UPDATE endpoint
+    async updateSalesRep(id, updates) {
+        const connection = await this.dbConnection.getConnection();
+        
+        // Build dynamic update query
+        const fields = [];
+        const values = [];
+        
+        for (const [key, value] of Object.entries(updates)) {
+            // Only add field if it's not undefined
+            if (value !== undefined) {
+                fields.push(`${key} = ?`);
+                values.push(value);
+            }
+        }
+        
+        if (fields.length === 0) {
+            return null;
+        }
+        
+        fields.push('updated_at = CURRENT_TIMESTAMP');
+        values.push(id);
+        
+        const query = `UPDATE sales_reps SET ${fields.join(', ')} WHERE id = ?`;
+        
+        try {
+            const [result] = await connection.execute(query, values);
+            
+            if (result.affectedRows === 0) {
+                return null;
+            }
+            
+            const [salesRep] = await connection.execute(
+                'SELECT * FROM sales_reps WHERE id = ?',
+                [id]
+            );
+            return salesRep[0];
+        } catch (error) {
+            console.error('Error updating sales rep:', error);
+            throw error;
+        }
+    }
+
+    // ADDED: Needed for DELETE endpoint
+    async deleteSalesRep(id) {
+        const connection = await this.dbConnection.getConnection();
+        
+        try {
+            const [result] = await connection.execute('DELETE FROM sales_reps WHERE id = ?', [id]);
+            return result.affectedRows > 0;
+        } catch (error) {
+            console.error('Error deleting sales rep:', error);
+            throw error;
+        }
+    }
+
     async close() {
         await this.dbConnection.closeConnection();
     }

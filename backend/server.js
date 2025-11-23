@@ -4,6 +4,7 @@ const url = require('url');
 const TransactionRoutes = require('./routes/transactionRoutes');
 const CommissionRoutes = require('./routes/commissionRoutes');
 const CommissionRuleRoutes = require('./routes/commissionRuleRoutes');
+const SalesRepRoutes = require('./routes/salesRepRoutes');
 
 const CommissionController = require('./controllers/commissionController');
 
@@ -16,6 +17,7 @@ class CommissionTrackingServer {
         this.transactionRoutes = new TransactionRoutes();
         this.commissionRoutes = new CommissionRoutes();
         this.commissionRuleRoutes = new CommissionRuleRoutes();
+        this.salesRepRoutes = new SalesRepRoutes();
         this.commissionController = new CommissionController();
         
         this.setupRoutes();
@@ -26,6 +28,7 @@ class CommissionTrackingServer {
         this.transactionRoutes.setupRoutes(this);
         this.commissionRoutes.setupRoutes(this);
         this.commissionRuleRoutes.setupRoutes(this);
+        this.salesRepRoutes.setupRoutes(this);
 
         // Additional utility routes
         this.get('/api/health', (req, res) => {
@@ -257,6 +260,11 @@ class CommissionTrackingServer {
             console.log('  PUT  /api/rules/:id - Update commission rule');
             console.log('  DELETE /api/rules/:id - Delete commission rule');
             console.log('  GET  /api/rules/active - Get active commission rule');
+            console.log('  GET  /api/sales-reps/ - Get all sales representatives');
+            console.log('  POST /api/sales-reps/ - Create sales representative');
+            console.log('  GET  /api/sales-reps/:id - Get sales representative by ID');
+            console.log('  PUT  /api/sales-reps/:id - Update sales representative');
+            console.log('  DELETE /api/sales-reps/:id - Delete sales representative');
         });
     }
 
@@ -268,12 +276,10 @@ class CommissionTrackingServer {
     }
 }
 
-// Start the server if this file is run directly
 if (require.main === module) {
     const server = new CommissionTrackingServer();
     server.start();
-
-    // Handle graceful shutdown
+    
     process.on('SIGINT', () => {
         console.log('\nShutting down gracefully...');
         server.stop();
